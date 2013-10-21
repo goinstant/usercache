@@ -1,26 +1,9 @@
-[![Build Status](------- build status link -------)](https://magnum.travis-ci.com/goinstant/usercache)
+[![Build Status](https://travis-ci.org/goinstant/usercache.png?branch=master)](https://travis-ci.org/goinstant/usercache)
 
-## Usercache
+# Usercache
 
 The Usercache component implements a synchronous interface for working with
 GoInstant users and is used in various [GoInstant widgets](https://developers.goinstant.com/v1/widgets/index.html).
-
-## Packaging
-For your convenience, we've packaged the Usercache component in several
-ways.
-
-#### How do I build the script myself?
-
-You may have your own build process. We've tried to make it easy to include
-the usercache component in your build process.
-
-#### Component
-
-We've packaged the Usercache component as a [component](http://component.io/).
-
-```
-component install
-```
 
 ## Contributing
 
