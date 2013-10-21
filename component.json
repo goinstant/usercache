@@ -1,0 +1,17 @@
+{
+  "name": "usercache",
+  "repo": "goinstant/usercache",
+  "description": "Synchronous interface for working with users",
+  "version": "0.0.1",
+  "keywords": ['GoInstant', 'widget', 'usercache'],
+  "dependencies": {
+    "component/emitter": "*",
+    "lodash/lodash": "*",
+    "caolan/async": "*"
+  },
+  "development": {},
+  "main": "usercache.js",
+  "scripts": [
+    "usercache.js"
+  ]
+}
