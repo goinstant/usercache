@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/goinstant/goangular.png?branch=master)](https://travis-ci.org/goinstant/goangular)
+[![Build Status](https://travis-ci.org/goinstant/usercache.png?branch=master)](https://travis-ci.org/goinstant/usercache)
 
 # Usercache
 
