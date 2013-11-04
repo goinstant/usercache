@@ -12,7 +12,7 @@ var _ = require('lodash');
 var async = require('async');
 var Emitter = require('emitter');
 
-var VALID_EVENTS = ["join", "leave", "change"];
+var VALID_EVENTS = ['join', 'leave', 'change'];
 
 /**
  * Instantiates the UserCache instance.
@@ -277,6 +277,8 @@ UserCache.prototype._updateUser = function(value, context) {
  */
 UserCache.prototype._handleJoinEvent = function(user) {
   this._users[user.id] = user;
+  this._usersKeys[user.id] = this._room.key('/.users/' + user.id);
+
   this._emitter.emit('join', user);
 };
 
@@ -287,6 +289,8 @@ UserCache.prototype._handleJoinEvent = function(user) {
  */
 UserCache.prototype._handleLeaveEvent = function(user) {
   delete this._users[user.id];
+  delete this._usersKeys[user.id];
+
   this._emitter.emit('leave', user);
 };
 
