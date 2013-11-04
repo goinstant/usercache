@@ -2,7 +2,7 @@
   "name": "usercache",
   "repo": "goinstant/usercache",
   "description": "Synchronous interface for working with users",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "keywords": ["GoInstant", "widget", "usercache"],
   "dependencies": {
     "component/emitter": "*",
