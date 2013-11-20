@@ -38,7 +38,6 @@ function UserCache(room) {
 /**
  * Initializes the UserCache by binding to platform events.
  * @param {function} cb A callback function.
- * @return {function} A callback function.
  */
 UserCache.prototype.initialize = function(cb) {
   if (!cb || !_.isFunction(cb)) {
@@ -46,20 +45,14 @@ UserCache.prototype.initialize = function(cb) {
   }
 
   this._getLocalUserId();
-
-  var tasks = [
-    _.bind(this._bindPlatformEvents, this),
-    _.bind(this._getUsers, this)
-  ];
+  this._bindEvents();
 
   var self = this;
 
-  async.series(tasks, function(err) {
+  this._getUsers(function(err) {
     if (err) {
-      return self.destroy(function() {
-        // Ignore destroy errors here since we're erroring anyways.
-        return cb(err);
-      });
+      self.destroy();
+      return cb(err);
     }
 
     cb();
@@ -68,26 +61,23 @@ UserCache.prototype.initialize = function(cb) {
 
 /**
  * Destroys the UserCache instance.
- * @param {function} cb A callback function.
- * @return {function} A callback function.
+ * @public
  */
-UserCache.prototype.destroy = function(cb) {
-  if (!cb || !_.isFunction(cb)) {
-    throw new Error('Callback was not found or invalid');
-  }
-
+UserCache.prototype.destroy = function() {
   var users = this._room.users;
 
-  var tasks = [
-    _.bind(this._room.off, this._room, 'leave', this._handleLeaveEvent),
-    _.bind(this._room.off, this._room, 'join', this._handleJoinEvent),
-    _.bind(users.off, users, 'set', this._updateUser),
-    _.bind(users.off, users, 'remove', this._updateUser)
-  ];
+  var usersSetOptions = {
+    local: true,
+    bubble: true,
+    listener: this._updateUser
+  };
+
+  this._room.off('leave', this._handleLeaveEvent);
+  this._room.off('join', this._handleJoinEvent);
+  users.off('set', usersSetOptions);
+  users.off('remove', usersSetOptions);
 
   this._emitter.off();
-
-  async.parallel(tasks, cb);
 };
 
 /**
@@ -185,7 +175,6 @@ UserCache.prototype.off = function(event, listener) {
 /**
  * Gets the local user's ID
  * @private
- * @param {function} cb A callback function.
  */
 UserCache.prototype._getLocalUserId = function() {
   var selfKey = this._room.self();
@@ -221,28 +210,22 @@ UserCache.prototype._getUsers = function(cb) {
 };
 
 /**
- * Binds to room.join, room.leave and user key.set
+ * Binds to room.join, room.leave and user key.set/key.remove
  * @private
- * @param {function} cb A callback function.
- * @return {function} A callback function.
  */
-UserCache.prototype._bindPlatformEvents = function(cb) {
+UserCache.prototype._bindEvents = function() {
   var users = this._room.users;
 
-  var metaOptions = {
+  var usersSetOptions = {
     local: true,
     bubble: true,
     listener: this._updateUser
   };
 
-  var tasks = [
-    _.bind(this._room.on, this._room, 'leave', this._handleLeaveEvent),
-    _.bind(this._room.on, this._room, 'join', this._handleJoinEvent),
-    _.bind(users.on, users, 'set', metaOptions),
-    _.bind(users.on, users, 'remove', metaOptions)
-  ];
-
-  async.parallel(tasks, cb);
+  this._room.on('leave', this._handleLeaveEvent);
+  this._room.on('join', this._handleJoinEvent);
+  users.on('set', usersSetOptions);
+  users.on('remove', usersSetOptions);
 };
 
 /**
