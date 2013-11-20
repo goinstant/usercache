@@ -21,13 +21,11 @@ describe('usercache', function() {
     this._emitter = new Emitter();
     this.name = name;
     this.get = sinon.stub().yields(null, storage(name));
-    this.on = function(evt, options, cb) {
+    this.on = function(evt, options) {
       this._emitter.on(evt, options.listener);
-      cb();
     };
-    this.off = function(evt, listener, cb) {
+    this.off = function(evt, listener) {
       this._emitter.off(evt, listener);
-      cb();
     };
   }
 
@@ -68,13 +66,11 @@ describe('usercache', function() {
       users: new MockKey('/.users'),
       user: function(id) { return mockUserKeys[id]; },
       self: sinon.stub().returns(mockUserKeys.local),
-      on: function(evt, listener, cb) {
+      on: function(evt, listener) {
         this._emitter.on(evt, listener);
-        cb();
       },
-      off: function(evt, listener, cb) {
+      off: function(evt, listener) {
         this._emitter.off(evt, listener);
-        cb();
       },
       key: function(name) { return new MockKey(name); }
     };
@@ -83,8 +79,8 @@ describe('usercache', function() {
     usercache.initialize(done);
   });
 
-  afterEach(function(done) {
-    usercache.destroy(done);
+  afterEach(function() {
+    usercache.destroy();
   });
 
   describe('getUser', function() {
