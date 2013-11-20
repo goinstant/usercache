@@ -79,8 +79,8 @@ describe('usercache', function() {
     usercache.initialize(done);
   });
 
-  afterEach(function() {
-    usercache.destroy();
+  afterEach(function(done) {
+    usercache.destroy(done);
   });
 
   describe('getUser', function() {

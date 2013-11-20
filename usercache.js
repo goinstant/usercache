@@ -51,8 +51,9 @@ UserCache.prototype.initialize = function(cb) {
 
   this._getUsers(function(err) {
     if (err) {
-      self.destroy();
-      return cb(err);
+      self.destroy(function() {
+        return cb(err);
+      });
     }
 
     cb();
@@ -63,7 +64,7 @@ UserCache.prototype.initialize = function(cb) {
  * Destroys the UserCache instance.
  * @public
  */
-UserCache.prototype.destroy = function() {
+UserCache.prototype.destroy = function(cb) {
   var users = this._room.users;
 
   var usersSetOptions = {
@@ -78,6 +79,8 @@ UserCache.prototype.destroy = function() {
   users.off('remove', usersSetOptions);
 
   this._emitter.off();
+
+  cb();
 };
 
 /**
@@ -155,7 +158,6 @@ UserCache.prototype.on = function(event, listener) {
   if (!_.isFunction(listener)) {
     throw new Error('Invalid argument: listener function is required');
   }
-
   this._emitter.on(event, listener);
 };
 
