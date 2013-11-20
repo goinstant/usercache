@@ -3,10 +3,10 @@
 
 /**
  * @fileOverview
- * Contains unit tests for the userlist common library.
+ * Contains unit tests for the usercache common library.
  */
 
-describe('userlist', function() {
+describe('usercache', function() {
   'use strict';
 
   var assert = window.assert;

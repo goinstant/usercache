@@ -21,6 +21,7 @@ var VALID_EVENTS = ['join', 'leave', 'change'];
  */
 function UserCache(room) {
   this._room = room;
+
   this._users = {};
   this._usersKeys = {};
   this._localUserId = null;
@@ -31,9 +32,6 @@ function UserCache(room) {
     '_updateUser',
     '_handleLeaveEvent',
     '_handleJoinEvent',
-    '_getUsers',
-    '_bindPlatformEvents',
-    '_getLocalUserId'
   ]);
 }
 
@@ -47,10 +45,11 @@ UserCache.prototype.initialize = function(cb) {
     throw new Error('Callback was not found or invalid');
   }
 
+  this._getLocalUserId();
+
   var tasks = [
-    this._getLocalUserId,
-    this._bindPlatformEvents,
-    this._getUsers
+    _.bind(this._bindPlatformEvents, this),
+    _.bind(this._getUsers, this)
   ];
 
   var self = this;
@@ -73,22 +72,20 @@ UserCache.prototype.initialize = function(cb) {
  * @return {function} A callback function.
  */
 UserCache.prototype.destroy = function(cb) {
-  var self = this;
-
   if (!cb || !_.isFunction(cb)) {
     throw new Error('Callback was not found or invalid');
   }
 
-  var users = self._room.users;
+  var users = this._room.users;
 
   var tasks = [
-    _.bind(self._room.off, self._room, 'leave', self._handleLeaveEvent),
-    _.bind(self._room.off, self._room, 'join', self._handleJoinEvent),
-    _.bind(users.off, users, 'set', self._updateUser),
-    _.bind(users.off, users, 'remove', self._updateUser)
+    _.bind(this._room.off, this._room, 'leave', this._handleLeaveEvent),
+    _.bind(this._room.off, this._room, 'join', this._handleJoinEvent),
+    _.bind(users.off, users, 'set', this._updateUser),
+    _.bind(users.off, users, 'remove', this._updateUser)
   ];
 
-  self._emitter.off();
+  this._emitter.off();
 
   async.parallel(tasks, cb);
 };
@@ -190,19 +187,11 @@ UserCache.prototype.off = function(event, listener) {
  * @private
  * @param {function} cb A callback function.
  */
-UserCache.prototype._getLocalUserId = function(cb) {
-  var self = this;
-
+UserCache.prototype._getLocalUserId = function() {
   var selfKey = this._room.self();
+  var path = selfKey.name.split('/');
 
-  selfKey.get(function(err, user) {
-    if (err) {
-      return cb(err);
-    }
-
-    self._localUserId = user.id;
-    cb();
-  });
+  this._localUserId = path[2];
 };
 
 /**
@@ -211,9 +200,10 @@ UserCache.prototype._getLocalUserId = function(cb) {
  * @param {function} cb A callback function.
  */
 UserCache.prototype._getUsers = function(cb) {
+  var usersKey = this._room.users;
+
   var self = this;
 
-  var usersKey = this._room.users;
   usersKey.get(function(err, users) {
     if (err) {
       return cb(err);
@@ -221,6 +211,7 @@ UserCache.prototype._getUsers = function(cb) {
 
     self._users = users;
 
+    // Create a reference to each user's key
     _.each(users, function(userObj, keyName) {
       self._usersKeys[keyName] = self._room.user(keyName);
     });
@@ -236,18 +227,17 @@ UserCache.prototype._getUsers = function(cb) {
  * @return {function} A callback function.
  */
 UserCache.prototype._bindPlatformEvents = function(cb) {
-  var self = this;
-  var users = self._room.users;
+  var users = this._room.users;
 
   var metaOptions = {
     local: true,
     bubble: true,
-    listener: self._updateUser
+    listener: this._updateUser
   };
 
   var tasks = [
-    _.bind(self._room.on, self._room, 'leave', self._handleLeaveEvent),
-    _.bind(self._room.on, self._room, 'join', self._handleJoinEvent),
+    _.bind(this._room.on, this._room, 'leave', this._handleLeaveEvent),
+    _.bind(this._room.on, this._room, 'join', this._handleJoinEvent),
     _.bind(users.on, users, 'set', metaOptions),
     _.bind(users.on, users, 'remove', metaOptions)
   ];
@@ -263,15 +253,13 @@ UserCache.prototype._bindPlatformEvents = function(cb) {
  * @param {context} context A key context object for the event.
  */
 UserCache.prototype._updateUser = function(value, context) {
-  var self = this;
-
   var path = context.key.split('/');
   var keyName = path[path.length-1];
 
-  var user = self._users[context.userId];
+  var user = this._users[context.userId];
   user[keyName] = value;
 
-  self._emitter.emit('change', user, context.key);
+  this._emitter.emit('change', user, context.key);
 };
 
 /**
