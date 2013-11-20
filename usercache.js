@@ -31,7 +31,7 @@ function UserCache(room) {
   _.bindAll(this, [
     '_updateUser',
     '_handleLeaveEvent',
-    '_handleJoinEvent',
+    '_handleJoinEvent'
   ]);
 }
 
@@ -139,7 +139,7 @@ UserCache.prototype.getAllUserKeys = function() {
  * @return {object} The local user's key.
  */
 UserCache.prototype.getLocalUserKey = function() {
-  return this.getUserKey(this._localUserId);
+  return this._room.self();
 };
 
 /**
@@ -237,10 +237,19 @@ UserCache.prototype._bindEvents = function() {
  */
 UserCache.prototype._updateUser = function(value, context) {
   var path = context.key.split('/');
-  var keyName = path[path.length-1];
+  var userKeyPath = path.slice(3);
 
   var user = this._users[context.userId];
-  user[keyName] = value;
+
+  var currentKey = user;
+
+  for (var i = 0; i < userKeyPath.length -1; i++) {
+    var key = userKeyPath[i];
+    currentKey = currentKey[key] = {};
+  }
+
+  var lastKey = _.last(userKeyPath);
+  currentKey[lastKey] = value;
 
   this._emitter.emit('change', user, context.key);
 };
