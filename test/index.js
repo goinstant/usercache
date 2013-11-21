@@ -183,6 +183,38 @@ describe('usercache', function() {
 
       assert.deepEqual(updatedUser, expectedUser);
     });
+
+    it('A custom key gets added to the cached user object', function() {
+      var fakeValue1 = 'value1';
+      var fakeValue2 = {
+        test4: {
+          test5: 'value2'
+        }
+      };
+
+      var fakeContext1 = {
+        key: '/.users/local/test/test1'
+      };
+
+      var fakeContext2 = {
+        key: '/.users/local/test/test2/test3'
+      };
+
+      var expectedUser = _.cloneDeep(usercache.getUser('local'));
+      expectedUser.test = {
+        test1: fakeValue1,
+        test2: {
+          test3: fakeValue2
+        }
+      };
+
+      usercache._updateUser(fakeValue1, fakeContext1);
+      usercache._updateUser(fakeValue2, fakeContext2);
+
+      var updatedUser = usercache.getUser('local');
+
+      assert.deepEqual(updatedUser, expectedUser);
+    });
   });
 
   describe('on', function() {
