@@ -244,15 +244,20 @@ UserCache.prototype._updateUser = function(value, context) {
 
   var user = this._users[userId];
 
-  var currentKey = user;
+  var merge = {};
+  var currentKey = merge;
 
+  // Create structure of object to be merged
   for (var i = 0; i < userKeyPath.length -1; i++) {
     var key = userKeyPath[i];
-    currentKey = currentKey[key] = {};
+    currentKey[key] = {};
+    currentKey = currentKey[key];
   }
 
   var lastKey = _.last(userKeyPath);
   currentKey[lastKey] = value;
+
+  _.merge(user, merge);
 
   this._emitter.emit('change', user, context.key);
 };
