@@ -239,9 +239,10 @@ UserCache.prototype._bindEvents = function() {
  */
 UserCache.prototype._updateUser = function(value, context) {
   var path = context.key.split('/');
+  var userId = path[2];
   var userKeyPath = path.slice(3);
 
-  var user = this._users[context.userId];
+  var user = this._users[userId];
 
   var currentKey = user;
 

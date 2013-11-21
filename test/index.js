@@ -139,6 +139,52 @@ describe('usercache', function() {
     });
   });
 
+  describe('custom user keys', function() {
+    it('A custom key gets added to the cached user object', function() {
+      var fakeValue = 'value';
+
+      var fakeContext = {
+        key: '/.users/local/test'
+      };
+
+      var expectedUser = usercache.getUser('local');
+      expectedUser.test = fakeValue;
+
+      usercache._updateUser(fakeValue, fakeContext);
+
+      var updatedUser = usercache.getUser('local');
+
+      assert.equal(updatedUser, expectedUser);
+    });
+
+    it('Nested custom keys get added to the cached user object', function() {
+      var fakeValue = {
+        test5: {
+          test6: 'value'
+        }
+      };
+
+      var fakeContext = {
+        key: '/.users/one/test1/test2/test3/test4'
+      };
+
+      var expectedUser = usercache.getUser('one');
+      expectedUser.test1 = {
+        test2: {
+          test3: {
+            test4: fakeValue
+          }
+        }
+      };
+
+      usercache._updateUser(fakeValue, fakeContext);
+
+      var updatedUser = usercache.getUser('one');
+
+      assert.equal(updatedUser, expectedUser);
+    });
+  });
+
   describe('on', function() {
     it('Throws for invalid events', function() {
       assert.exception(function() {
