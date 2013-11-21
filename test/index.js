@@ -184,7 +184,7 @@ describe('usercache', function() {
       assert.deepEqual(updatedUser, expectedUser);
     });
 
-    it('A custom key gets added to the cached user object', function() {
+    it('Custom nested keys get added to the cached user object', function() {
       var fakeValue1 = 'value1';
       var fakeValue2 = {
         test4: {
