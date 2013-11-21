@@ -21,6 +21,7 @@ var VALID_EVENTS = ['join', 'leave', 'change'];
  */
 function UserCache(room) {
   this._room = room;
+
   this._users = {};
   this._usersKeys = {};
   this._localUserId = null;
@@ -30,35 +31,27 @@ function UserCache(room) {
   _.bindAll(this, [
     '_updateUser',
     '_handleLeaveEvent',
-    '_handleJoinEvent',
-    '_getUsers',
-    '_bindPlatformEvents',
-    '_getLocalUserId'
+    '_handleJoinEvent'
   ]);
 }
 
 /**
  * Initializes the UserCache by binding to platform events.
  * @param {function} cb A callback function.
- * @return {function} A callback function.
  */
 UserCache.prototype.initialize = function(cb) {
   if (!cb || !_.isFunction(cb)) {
     throw new Error('Callback was not found or invalid');
   }
 
-  var tasks = [
-    this._getLocalUserId,
-    this._bindPlatformEvents,
-    this._getUsers
-  ];
+  this._getLocalUserId();
+  this._bindEvents();
 
   var self = this;
 
-  async.series(tasks, function(err) {
+  this._getUsers(function(err) {
     if (err) {
-      return self.destroy(function() {
-        // Ignore destroy errors here since we're erroring anyways.
+      self.destroy(function() {
         return cb(err);
       });
     }
@@ -69,28 +62,25 @@ UserCache.prototype.initialize = function(cb) {
 
 /**
  * Destroys the UserCache instance.
- * @param {function} cb A callback function.
- * @return {function} A callback function.
+ * @public
  */
 UserCache.prototype.destroy = function(cb) {
-  var self = this;
+  var users = this._room.users;
 
-  if (!cb || !_.isFunction(cb)) {
-    throw new Error('Callback was not found or invalid');
-  }
+  var usersSetOptions = {
+    local: true,
+    bubble: true,
+    listener: this._updateUser
+  };
 
-  var users = self._room.key('/.users');
+  this._room.off('leave', this._handleLeaveEvent);
+  this._room.off('join', this._handleJoinEvent);
+  users.off('set', usersSetOptions);
+  users.off('remove', usersSetOptions);
 
-  var tasks = [
-    _.bind(self._room.off, self._room, 'leave', self._handleLeaveEvent),
-    _.bind(self._room.off, self._room, 'join', self._handleJoinEvent),
-    _.bind(users.off, users, 'set', self._updateUser),
-    _.bind(users.off, users, 'remove', self._updateUser)
-  ];
+  this._emitter.off();
 
-  self._emitter.off();
-
-  async.parallel(tasks, cb);
+  cb();
 };
 
 /**
@@ -152,7 +142,7 @@ UserCache.prototype.getAllUserKeys = function() {
  * @return {object} The local user's key.
  */
 UserCache.prototype.getLocalUserKey = function() {
-  return this.getUserKey(this._localUserId);
+  return this._room.self();
 };
 
 /**
@@ -168,7 +158,6 @@ UserCache.prototype.on = function(event, listener) {
   if (!_.isFunction(listener)) {
     throw new Error('Invalid argument: listener function is required');
   }
-
   this._emitter.on(event, listener);
 };
 
@@ -188,19 +177,12 @@ UserCache.prototype.off = function(event, listener) {
 /**
  * Gets the local user's ID
  * @private
- * @param {function} cb A callback function.
  */
-UserCache.prototype._getLocalUserId = function(cb) {
-  var self = this;
+UserCache.prototype._getLocalUserId = function() {
+  var selfKey = this._room.self();
+  var path = selfKey.name.split('/');
 
-  this._room.user(function(err, user) {
-    if (err) {
-      return cb(err);
-    }
-
-    self._localUserId = user.id;
-    cb();
-  });
+  this._localUserId = path[2];
 };
 
 /**
@@ -209,44 +191,43 @@ UserCache.prototype._getLocalUserId = function(cb) {
  * @param {function} cb A callback function.
  */
 UserCache.prototype._getUsers = function(cb) {
+  var usersKey = this._room.users;
+
   var self = this;
 
-  this._room.users(function(err, userMap, keyMap) {
+  usersKey.get(function(err, users) {
     if (err) {
       return cb(err);
     }
 
-    self._users = userMap;
-    self._usersKeys = keyMap;
+    self._users = users;
+
+    // Create a reference to each user's key
+    _.each(users, function(userObj, keyName) {
+      self._usersKeys[keyName] = self._room.user(keyName);
+    });
 
     cb();
   });
 };
 
 /**
- * Binds to room.join, room.leave and user key.set
+ * Binds to room.join, room.leave and user key.set/key.remove
  * @private
- * @param {function} cb A callback function.
- * @return {function} A callback function.
  */
-UserCache.prototype._bindPlatformEvents = function(cb) {
-  var self = this;
-  var users = self._room.key('/.users');
+UserCache.prototype._bindEvents = function() {
+  var users = this._room.users;
 
-  var metaOptions = {
+  var usersSetOptions = {
     local: true,
     bubble: true,
-    listener: self._updateUser
+    listener: this._updateUser
   };
 
-  var tasks = [
-    _.bind(self._room.on, self._room, 'leave', self._handleLeaveEvent),
-    _.bind(self._room.on, self._room, 'join', self._handleJoinEvent),
-    _.bind(users.on, users, 'set', metaOptions),
-    _.bind(users.on, users, 'remove', metaOptions)
-  ];
-
-  async.parallel(tasks, cb);
+  this._room.on('leave', this._handleLeaveEvent);
+  this._room.on('join', this._handleJoinEvent);
+  users.on('set', usersSetOptions);
+  users.on('remove', usersSetOptions);
 };
 
 /**
@@ -257,17 +238,23 @@ UserCache.prototype._bindPlatformEvents = function(cb) {
  * @param {context} context A key context object for the event.
  */
 UserCache.prototype._updateUser = function(value, context) {
-  var self = this;
+  var path = context.key.split('/');
+  var userId = path[2];
+  var userKeyPath = path.slice(3);
 
-  // TODO : Do this more efficiently by just merging the new data in.
-  this._room.key('/.users/' + context.userId).get(function(err, user) {
-    if (err) {
-      throw err;
-    }
+  var user = this._users[userId];
 
-    self._users[user.id] = user;
-    self._emitter.emit('change', user, context.key);
-  });
+  var currentKey = user;
+
+  for (var i = 0; i < userKeyPath.length -1; i++) {
+    var key = userKeyPath[i];
+    currentKey = currentKey[key] = {};
+  }
+
+  var lastKey = _.last(userKeyPath);
+  currentKey[lastKey] = value;
+
+  this._emitter.emit('change', user, context.key);
 };
 
 /**
@@ -277,7 +264,7 @@ UserCache.prototype._updateUser = function(value, context) {
  */
 UserCache.prototype._handleJoinEvent = function(user) {
   this._users[user.id] = user;
-  this._usersKeys[user.id] = this._room.key('/.users/' + user.id);
+  this._usersKeys[user.id] = this._room.user(user.id);
 
   this._emitter.emit('join', user);
 };

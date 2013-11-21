@@ -3,10 +3,10 @@
 
 /**
  * @fileOverview
- * Contains unit tests for the userlist common library.
+ * Contains unit tests for the usercache common library.
  */
 
-describe('userlist', function() {
+describe('usercache', function() {
   'use strict';
 
   var assert = window.assert;
@@ -14,26 +14,42 @@ describe('userlist', function() {
 
   var UserCache = require('usercache');
   var Emitter = require('emitter');
+  var _ = require('lodash');
   var usercache;
 
   function MockKey(name) {
     this._emitter = new Emitter();
     this.name = name;
-    this.get = sinon.stub().yields();
-    this.on = function(evt, options, cb) {
+    this.get = sinon.stub().yields(null, storage(name));
+    this.on = function(evt, options) {
       this._emitter.on(evt, options.listener);
-      cb();
     };
-    this.off = function(evt, listener, cb) {
+    this.off = function(evt, listener) {
       this._emitter.off(evt, listener);
-      cb();
     };
+  }
+
+  function storage(name) {
+    var path = name.split('/');
+    path.splice(0,1);
+
+    var value = _.clone(dataStore);
+
+    _.each(path, function(key) {
+      value = value[key];
+    });
+
+    return value;
   }
 
   var mockUsers = {
     local: { id: 'local' },
     one: { id: 'one' },
     two: { id: 'two' }
+  };
+
+  var dataStore = {
+    ".users": mockUsers
   };
 
   var mockUserKeys = {
@@ -47,15 +63,14 @@ describe('userlist', function() {
   beforeEach(function(done) {
     mockRoom = {
       _emitter: new Emitter(),
-      users: sinon.stub().yields(null, mockUsers, mockUserKeys),
-      user: sinon.stub().yields(null, mockUsers.local),
-      on: function(evt, listener, cb) {
+      users: new MockKey('/.users'),
+      user: function(id) { return mockUserKeys[id]; },
+      self: sinon.stub().returns(mockUserKeys.local),
+      on: function(evt, listener) {
         this._emitter.on(evt, listener);
-        cb();
       },
-      off: function(evt, listener, cb) {
+      off: function(evt, listener) {
         this._emitter.off(evt, listener);
-        cb();
       },
       key: function(name) { return new MockKey(name); }
     };
@@ -124,6 +139,52 @@ describe('userlist', function() {
     });
   });
 
+  describe('custom user keys', function() {
+    it('A custom key gets added to the cached user object', function() {
+      var fakeValue = 'value';
+
+      var fakeContext = {
+        key: '/.users/local/test'
+      };
+
+      var expectedUser = _.cloneDeep(usercache.getUser('local'));
+      expectedUser.test = fakeValue;
+
+      usercache._updateUser(fakeValue, fakeContext);
+
+      var updatedUser = usercache.getUser('local');
+
+      assert.deepEqual(updatedUser, expectedUser);
+    });
+
+    it('Nested custom keys get added to the cached user object', function() {
+      var fakeValue = {
+        test5: {
+          test6: 'value'
+        }
+      };
+
+      var fakeContext = {
+        key: '/.users/one/test1/test2/test3/test4'
+      };
+
+      var expectedUser = _.cloneDeep(usercache.getUser('one'));
+      expectedUser.test1 = {
+        test2: {
+          test3: {
+            test4: fakeValue
+          }
+        }
+      };
+
+      usercache._updateUser(fakeValue, fakeContext);
+
+      var updatedUser = usercache.getUser('one');
+
+      assert.deepEqual(updatedUser, expectedUser);
+    });
+  });
+
   describe('on', function() {
     it('Throws for invalid events', function() {
       assert.exception(function() {
@@ -137,43 +198,30 @@ describe('userlist', function() {
       }, 'Invalid argument: listener function is required');
     });
 
-    it('Adds listeners that get triggered', function(done) {
+    it('Adds listeners that get triggered', function() {
       var newUser = { id: 'newUser' };
-
-      // Stub out the platform interactions that are needed to trigger the
-      // "change" handler.
-      var usersKey = new MockKey('/.users');
-      var userKey = new MockKey('/.users/newUser');
-      userKey.get = sinon.stub().yields(null, newUser);
-
-      var stub = sinon.stub(mockRoom, 'key');
-      stub.returns(userKey);
-      stub.withArgs('/.users').returns(usersKey);
 
       var join = sinon.spy();
       var leave = sinon.spy();
       var change = sinon.spy();
 
-      // Have to make a new instance that uses our stubbed out room/keys.
-      var cache = new UserCache(mockRoom);
-      cache.initialize(function(err) {
-        assert.ifError(err);
+      usercache.on('join', join);
+      usercache.on('leave', leave);
+      usercache.on('change', change);
 
-        cache.on('join', join);
-        cache.on('leave', leave);
-        cache.on('change', change);
+      mockRoom._emitter.emit('join', newUser);
+      sinon.assert.calledWith(join, newUser);
 
-        mockRoom._emitter.emit('join', newUser);
-        sinon.assert.calledWith(join, newUser);
+      var context = {
+        userId: 'newUser',
+        key: '/.users/newUser/someKey'
+      };
 
-        mockRoom._emitter.emit('leave', newUser);
-        sinon.assert.calledWith(leave, newUser);
+      mockRoom.users._emitter.emit('set', 'someValue', context);
+      sinon.assert.calledWith(change, newUser, context.key);
 
-        usersKey._emitter.emit('set', 'someValue', { userId: 'newUser' });
-        sinon.assert.calledWith(change, newUser);
-
-        cache.destroy(done);
-      });
+      mockRoom._emitter.emit('leave', newUser);
+      sinon.assert.calledWith(leave, newUser);
     });
   });
 
