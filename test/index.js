@@ -147,14 +147,14 @@ describe('usercache', function() {
         key: '/.users/local/test'
       };
 
-      var expectedUser = usercache.getUser('local');
+      var expectedUser = _.cloneDeep(usercache.getUser('local'));
       expectedUser.test = fakeValue;
 
       usercache._updateUser(fakeValue, fakeContext);
 
       var updatedUser = usercache.getUser('local');
 
-      assert.equal(updatedUser, expectedUser);
+      assert.deepEqual(updatedUser, expectedUser);
     });
 
     it('Nested custom keys get added to the cached user object', function() {
@@ -168,7 +168,7 @@ describe('usercache', function() {
         key: '/.users/one/test1/test2/test3/test4'
       };
 
-      var expectedUser = usercache.getUser('one');
+      var expectedUser = _.cloneDeep(usercache.getUser('one'));
       expectedUser.test1 = {
         test2: {
           test3: {
@@ -181,7 +181,7 @@ describe('usercache', function() {
 
       var updatedUser = usercache.getUser('one');
 
-      assert.equal(updatedUser, expectedUser);
+      assert.deepEqual(updatedUser, expectedUser);
     });
   });
 
