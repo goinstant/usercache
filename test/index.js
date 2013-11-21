@@ -183,6 +183,78 @@ describe('usercache', function() {
 
       assert.deepEqual(updatedUser, expectedUser);
     });
+
+    it('Custom nested keys get added to the cached user object', function() {
+      var fakeValue1 = 'value1';
+      var fakeValue2 = {
+        test4: {
+          test5: 'value2'
+        }
+      };
+
+      var fakeContext1 = {
+        key: '/.users/local/test/test1'
+      };
+
+      var fakeContext2 = {
+        key: '/.users/local/test/test2/test3'
+      };
+
+      var expectedUser = _.cloneDeep(usercache.getUser('local'));
+      expectedUser.test = {
+        test1: fakeValue1,
+        test2: {
+          test3: fakeValue2
+        }
+      };
+
+      usercache._updateUser(fakeValue1, fakeContext1);
+      usercache._updateUser(fakeValue2, fakeContext2);
+
+      var updatedUser = usercache.getUser('local');
+
+      assert.deepEqual(updatedUser, expectedUser);
+    });
+
+    it('Sets a removed key\'s value to null in the cache', function() {
+      var fakeValue1 = 'value1';
+      var fakeValue2 = {
+        test4: {
+          test5: 'value2'
+        }
+      };
+
+      var fakeContext1 = {
+        key: '/.users/local/test/test1'
+      };
+
+      var fakeContext2 = {
+        key: '/.users/local/test/test2/test3'
+      };
+
+      var expectedUser = _.cloneDeep(usercache.getUser('local'));
+      expectedUser.test = {
+        test1: fakeValue1,
+        test2: {
+          test3: fakeValue2
+        }
+      };
+
+      var updatedUser = null;
+
+      usercache._updateUser(null, fakeContext2);
+      expectedUser.test.test2.test3 = null;
+      updatedUser = usercache.getUser('local');
+      assert.deepEqual(updatedUser, expectedUser);
+
+      usercache._updateUser(fakeValue2, fakeContext2);
+      expectedUser.test.test2.test3 = fakeValue2;
+      assert.deepEqual(updatedUser, expectedUser);
+
+      usercache._updateUser(null, fakeContext1);
+      expectedUser.test.test1 = null;
+      assert.deepEqual(updatedUser, expectedUser);
+    });
   });
 
   describe('on', function() {
