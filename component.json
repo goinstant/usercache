@@ -2,12 +2,12 @@
   "name": "usercache",
   "repo": "goinstant/usercache",
   "description": "Synchronous interface for working with users",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "keywords": ["GoInstant", "widget", "usercache"],
   "dependencies": {
-    "component/emitter": "*",
-    "lodash/lodash": "*",
-    "caolan/async": "*"
+    "component/emitter": "1.1.0",
+    "lodash/lodash": "2.3.0",
+    "caolan/async": "f01b3992fbe7aa2f4881152143608ad666aea1cc"
   },
   "development": {},
   "main": "usercache.js",
